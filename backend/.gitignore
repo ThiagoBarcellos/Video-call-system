@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.sqlite
+*.png
+*.jpg
+.env
+.idea
+id_rsa_priv.pem
+id_rsa_pub.pem
+package-lock.json
