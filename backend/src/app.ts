@@ -10,11 +10,15 @@ class App {
     constructor(){
         this.app = express();
         this.http = new http.Server(this.app);
-        this.io = new Server(this.http);
+        this.io = new Server(this.http, {
+            cors:{
+                origin: '*',
+            },
+        });
     }
 
     public listen(){
-        this.app.listen(3333, () => {
+        this.http.listen(3333, () => {
             console.log("server is running on port 3333");
         })
     }
@@ -24,16 +28,17 @@ class App {
     }
 
     private socketEvents(socket: Socket){
-        console.log('socket connected: ' + socket.id);
         socket.on('subscribe', (data) => {
             socket.join(data.roomId)
 
-            socket.broadcast.to(data.roomId).emit('chat', {
-                message: data.message,
-                username: data.username,
-                time: data.time
-            })
-        })
+            socket.on('chat', (data) => {
+                socket.broadcast.to(data.roomId).emit('chat', {
+                    message: data.message,
+                    username: data.username,
+                    time: data.time
+                });
+            });
+        });
     }
 }
 
