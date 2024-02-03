@@ -19,6 +19,7 @@ interface ICandidates {
 interface IDataStream {
   id: string;
   stream: MediaStream;
+  username: string;
 }
 
 export default function Room({ params }: { params: { id: string } }) {
@@ -33,29 +34,33 @@ export default function Room({ params }: { params: { id: string } }) {
   const [username, setUsername] = useState<string>();
 
   useEffect(() => {
+    const username = sessionStorage.getItem('username');
     socket?.on("connect", async () => {
       socket?.emit("subscribe", {
         roomId: params.id,
         socketId: socket.id,
+        username,
       });
       await initCamera();
     });
 
     socket?.on("new user", (data) => {
-      createPeerConnection(data.socketId, false);
+      createPeerConnection(data.socketId, false, data.username);
       socket.emit("newUserStart", {
         to: data.socketId,
         sender: socket.id,
+        username,
       });
     });
 
     socket?.on("newUserStart", (data) => {
-      createPeerConnection(data.sender, true);
+      createPeerConnection(data.sender, true, data.username);
     });
 
     socket?.on("sdp", (data) => handleAnswer(data));
 
     socket?.on("ice candidates", (data) => handleIceCandidates(data));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket]);
 
   const handleIceCandidates = async (data: ICandidates) => {
@@ -86,7 +91,8 @@ export default function Room({ params }: { params: { id: string } }) {
 
   const createPeerConnection = async (
     socketId: string,
-    createOffer: boolean
+    createOffer: boolean,
+    username: string,
   ) => {
     const config = {
       iceServers: [
@@ -129,6 +135,7 @@ export default function Room({ params }: { params: { id: string } }) {
       const dataStream: IDataStream = {
         id: socketId,
         stream: remoteStream,
+        username
       };
 
       setRemoteStreams((prevState: IDataStream[]) => {
@@ -215,17 +222,16 @@ export default function Room({ params }: { params: { id: string } }) {
   return (
     <div className="h-screen">
       <Header />
-      <div className="flex h-[75%] ">
-        <div className="md:w-[80%] w-full h-full m-3 ">
+      <div className="flex h-[80%] ">
+        <div className="md:w-[85%] w-full m-3 ">
           <div className="grid md:grid-cols-2 grid-cols-1 gap-8 h-full">
             <div className="bg-gray-950 w-full rounded-md h-full p-2 relative ">
               <video
                 className="h-full w-full mirror-mode"
                 autoPlay
-                playsInline
                 ref={localStream}
               />
-              <span className="absolute bottom-3">lorem ipsum</span>
+              <span className="absolute bottom-3"> {sessionStorage.getItem('username')} </span>
             </div>
 
             {remoteStreams.map((stream, index) => {
@@ -237,13 +243,12 @@ export default function Room({ params }: { params: { id: string } }) {
                   <video
                     className="h-full w-full"
                     autoPlay
-                    playsInline
                     ref={(video) => {
                       if (video && video.srcObject != stream.stream)
                         video.srcObject = stream.stream;
                     }}
                   />
-                  <span className="absolute bottom-3">lorem ipsum</span>
+                  <span className="absolute bottom-3">{stream.username}</span>
                 </div>
               );
             })}
