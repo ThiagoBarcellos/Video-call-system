@@ -30,15 +30,49 @@ class App {
     private socketEvents(socket: Socket){
         socket.on('subscribe', (data) => {
             socket.join(data.roomId)
+            socket.join(data.socketId);
 
-            socket.on('chat', (data) => {
-                socket.broadcast.to(data.roomId).emit('chat', {
-                    message: data.message,
+            const roomsSession = Array.from(socket.rooms);
+
+            if(roomsSession.length > 1){
+                socket.to(data.roomId).emit('new user', {
+                    socketId: socket.id,
                     username: data.username,
-                    time: data.time
-                });
+                })
+            }
+        });
+
+        socket.on('newUserStart', (data) => {
+            socket.to(data.to).emit('newUserStart', {
+                sender: data.sender,
+            })
+        })
+
+        socket.on('sdp', (data) => {
+            socket.to(data.to).emit('sdp', {
+                description: data.description,
+                sender: data.sender,
+            })
+        })
+
+        socket.on('ice candidates', (data) => {
+            socket.to(data.to).emit('ice candidates', {
+                candidate: data.candidate,
+                sender: data.sender,
+            })
+        })
+
+        socket.on('chat', (data) => {
+            socket.broadcast.to(data.roomId).emit('chat', {
+                message: data.message,
+                username: data.username,
+                time: data.time
             });
         });
+
+        socket.on('disconnect', () => {
+            socket.disconnect();
+        })
     }
 }
 
